@@ -128,7 +128,7 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newKey != "" {
-		w.Header().Set("Location", fmt.Sprintf("/api/v1/data/%s", newKey))
+		w.Header().Set("Location", fmt.Sprintf("/%s", newKey))
 	}
 
 	w.WriteHeader(http.StatusCreated)

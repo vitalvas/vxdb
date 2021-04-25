@@ -17,6 +17,11 @@ func getEnv(key, fallback string) string {
 	return fallback
 }
 
+func getBoolEnv(key string) bool {
+	_, found := os.LookupEnv(key)
+	return found
+}
+
 func getKeyByte(r *http.Request) []byte {
 	vars := mux.Vars(r)
 

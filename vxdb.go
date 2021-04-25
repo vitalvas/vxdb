@@ -7,13 +7,16 @@ import (
 	"log"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/dgraph-io/badger/v2"
+	"github.com/gorilla/mux"
 )
 
 type vxdb struct {
-	db *badger.DB
+	db         *badger.DB
+	useBuckets bool
 }
 
 func (v *vxdb) runGC() {
@@ -27,8 +30,8 @@ func (v *vxdb) runGC() {
 	}
 }
 
-func (v *vxdb) listKeys(w http.ResponseWriter, r *http.Request) {
-	var listOfKeys []string
+func (v *vxdb) listBuckets(w http.ResponseWriter, r *http.Request) {
+	keys := make(map[string]bool)
 
 	err := v.db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
@@ -42,7 +45,77 @@ func (v *vxdb) listKeys(w http.ResponseWriter, r *http.Request) {
 		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
 			item := it.Item()
 			key := item.Key()
-			listOfKeys = append(listOfKeys, string(key))
+			multiKeys := strings.SplitN(string(key), "/", 2)
+			if len(multiKeys) == 2 {
+				keys[multiKeys[0]] = true
+			}
+		}
+
+		return nil
+	})
+
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	var listOfKeys []string
+
+	for k, _ := range keys {
+		listOfKeys = append(listOfKeys, k)
+	}
+
+	data, err := json.Marshal(listOfKeys)
+	if err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+		return
+	}
+
+	w.Header().Set("content-type", "application/json")
+	if string(data) == "null" {
+		w.Write([]byte("[]"))
+	} else {
+		w.Write(data)
+	}
+
+	w.Write([]byte("\n"))
+}
+
+func (v *vxdb) listKeys(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+
+	var listOfKeys []string
+
+	err := v.db.View(func(txn *badger.Txn) error {
+		opts := badger.DefaultIteratorOptions
+		opts.PrefetchValues = false
+
+		it := txn.NewIterator(opts)
+		defer it.Close()
+
+		var prefix []byte
+
+		if v.useBuckets {
+			prefix = append(prefix, []byte(vars["bucket"]+"/")...)
+		}
+
+		userPrefix := getHeaderKey("prefix", r)
+		if userPrefix != "" {
+			prefix = append(prefix, []byte(userPrefix)...)
+		}
+
+		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+			item := it.Item()
+			key := item.Key()
+			keyStr := string(key)
+			if v.useBuckets {
+				multiKeys := strings.SplitN(keyStr, "/", 2)
+				listOfKeys = append(listOfKeys, multiKeys[1])
+			} else {
+				if !strings.Contains(keyStr, "/") {
+					listOfKeys = append(listOfKeys, keyStr)
+				}
+			}
 		}
 
 		return nil
@@ -70,16 +143,26 @@ func (v *vxdb) listKeys(w http.ResponseWriter, r *http.Request) {
 }
 
 func (v *vxdb) getKey(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	bucket := vars["bucket"]
+
+	var key []byte
+
+	if v.useBuckets {
+		key = append(key, []byte(bucket+"/")...)
+	}
+
+	key = append(key, getKeyByte(r)...)
+
 	err := v.db.View(func(txn *badger.Txn) error {
-		item, err := txn.Get(getKeyByte(r))
+		item, err := txn.Get(key)
 		if err != nil {
 			return err
 		}
-		item.Value(func(val []byte) error {
+		return item.Value(func(val []byte) error {
 			w.Write(val)
 			return nil
 		})
-		return nil
 	})
 
 	if err != nil {
@@ -92,6 +175,9 @@ func (v *vxdb) getKey(w http.ResponseWriter, r *http.Request) {
 }
 
 func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	bucket := vars["bucket"]
+
 	key := getKeyByte(r)
 
 	newKey := ""
@@ -99,6 +185,10 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 	if len(key) == 0 {
 		newKey = getNewKey()
 		key = []byte(newKey)
+	}
+
+	if v.useBuckets {
+		key = append([]byte(bucket+"/"), key...)
 	}
 
 	err := v.db.Update(func(txn *badger.Txn) error {
@@ -128,18 +218,41 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newKey != "" {
-		w.Header().Set("Location", fmt.Sprintf("/%s", newKey))
+		location := fmt.Sprintf("/%s", newKey)
+		if v.useBuckets {
+			location = fmt.Sprintf("/%s/%s", bucket, newKey)
+		}
+		w.Header().Set("Location", location)
 	}
 
 	w.WriteHeader(http.StatusCreated)
 }
 
 func (v *vxdb) delKey(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	bucket := vars["bucket"]
+
+	var key []byte
+
+	if v.useBuckets {
+		key = append(key, []byte(bucket+"/")...)
+	}
+
+	key = append(key, getKeyByte(r)...)
+
 	err := v.db.Update(func(txn *badger.Txn) error {
-		return txn.Delete(getKeyByte(r))
+		_, err := txn.Get(key)
+		if err != nil {
+			return err
+		}
+		return txn.Delete(key)
 	})
 
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		if err == badger.ErrKeyNotFound {
+			http.Error(w, badger.ErrKeyNotFound.Error(), http.StatusNotFound)
+		} else {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+		}
 	}
 }

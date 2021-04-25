@@ -47,7 +47,7 @@ func main() {
 	}
 
 	srv := http.Server{
-		Addr:    getEnv("HTTP_HOST", "127.0.0.1:8080"),
+		Addr:    getEnv("HTTP_HOST", "0.0.0.0:8080"),
 		Handler: router,
 	}
 

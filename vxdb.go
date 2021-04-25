@@ -61,7 +61,7 @@ func (v *vxdb) listBuckets(w http.ResponseWriter, r *http.Request) {
 
 	var listOfKeys []string
 
-	for k, _ := range keys {
+	for k := range keys {
 		listOfKeys = append(listOfKeys, k)
 	}
 

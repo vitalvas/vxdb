@@ -1,8 +1,13 @@
 package main
 
 import (
+	"context"
 	"log"
 	"net/http"
+	"os"
+	"os/signal"
+	"syscall"
+	"time"
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gorilla/mux"
@@ -58,7 +63,21 @@ func main() {
 
 	go vxdb.runGC()
 
-	if err := srv.ListenAndServe(); err != nil {
-		log.Println(err)
+	go func() {
+		signChan := make(chan os.Signal, 1)
+
+		signal.Notify(signChan, os.Interrupt, syscall.SIGTERM)
+		sig := <-signChan
+		log.Println("shutdown:", sig)
+		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		defer cancel()
+
+		if err := srv.Shutdown(ctx); err != nil {
+			log.Fatalf("HTTP server shutdown failed:%+s", err)
+		}
+	}()
+
+	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
+		log.Fatalln(err)
 	}
 }

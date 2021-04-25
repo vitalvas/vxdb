@@ -4,12 +4,15 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/dgraph-io/badger/v2"
+	"github.com/dgraph-io/badger/v3"
 	"github.com/gorilla/mux"
 )
 
 func main() {
-	db, err := badger.Open(badger.DefaultOptions(getEnv("DB_PATH", "./db")))
+	dbOpts := badger.DefaultOptions(getEnv("DB_PATH", "./db"))
+	dbOpts.ValueLogFileSize = 128 << 20
+
+	db, err := badger.Open(dbOpts)
 	if err != nil {
 		log.Fatal(err)
 	}
@@ -18,6 +21,8 @@ func main() {
 		db:         db,
 		useBuckets: getBoolEnv("DB_USE_BUCKETS"),
 	}
+
+	defer vxdb.db.Close()
 
 	router := mux.NewRouter()
 

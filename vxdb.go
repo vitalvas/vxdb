@@ -14,6 +14,12 @@ import (
 	"github.com/gorilla/mux"
 )
 
+var reservedKeys = map[string]bool{
+	"metrics": true,
+	"admin":   true,
+	"api":     true,
+}
+
 type vxdb struct {
 	db         *badger.DB
 	useBuckets bool
@@ -188,7 +194,18 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if v.useBuckets {
+		if _, exists := reservedKeys[bucket]; exists {
+			http.Error(w, fmt.Sprintf("'%s' is a reserved name", bucket), http.StatusForbidden)
+			return
+		}
+
 		key = append([]byte(bucket+"/"), key...)
+	} else {
+		keyStr := vars["key"]
+		if _, exists := reservedKeys[keyStr]; exists {
+			http.Error(w, fmt.Sprintf("'%s' is a reserved name", keyStr), http.StatusForbidden)
+			return
+		}
 	}
 
 	err := v.db.Update(func(txn *badger.Txn) error {

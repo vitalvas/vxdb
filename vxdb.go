@@ -21,8 +21,7 @@ var reservedKeys = map[string]bool{
 }
 
 type vxdb struct {
-	db         *badger.DB
-	useBuckets bool
+	db *badger.DB
 }
 
 func (v *vxdb) runGC() {
@@ -101,9 +100,7 @@ func (v *vxdb) listKeys(w http.ResponseWriter, r *http.Request) {
 
 		var prefix []byte
 
-		if v.useBuckets {
-			prefix = append(prefix, []byte(vars["bucket"]+"/")...)
-		}
+		prefix = append(prefix, []byte(vars["bucket"]+"/")...)
 
 		userPrefix := getHeaderKey("prefix", r)
 		if userPrefix != "" {
@@ -114,14 +111,8 @@ func (v *vxdb) listKeys(w http.ResponseWriter, r *http.Request) {
 			item := it.Item()
 			key := item.Key()
 			keyStr := string(key)
-			if v.useBuckets {
-				multiKeys := strings.SplitN(keyStr, "/", 2)
-				listOfKeys = append(listOfKeys, multiKeys[1])
-			} else {
-				if !strings.Contains(keyStr, "/") {
-					listOfKeys = append(listOfKeys, keyStr)
-				}
-			}
+			multiKeys := strings.SplitN(keyStr, "/", 2)
+			listOfKeys = append(listOfKeys, multiKeys[1])
 		}
 
 		return nil
@@ -154,10 +145,7 @@ func (v *vxdb) getKey(w http.ResponseWriter, r *http.Request) {
 
 	var key []byte
 
-	if v.useBuckets {
-		key = append(key, []byte(bucket+"/")...)
-	}
-
+	key = append(key, []byte(bucket+"/")...)
 	key = append(key, getKeyByte(r)...)
 
 	err := v.db.View(func(txn *badger.Txn) error {
@@ -193,20 +181,12 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 		key = []byte(newKey)
 	}
 
-	if v.useBuckets {
-		if _, exists := reservedKeys[bucket]; exists {
-			http.Error(w, fmt.Sprintf("'%s' is a reserved name", bucket), http.StatusForbidden)
-			return
-		}
-
-		key = append([]byte(bucket+"/"), key...)
-	} else {
-		keyStr := vars["key"]
-		if _, exists := reservedKeys[keyStr]; exists {
-			http.Error(w, fmt.Sprintf("'%s' is a reserved name", keyStr), http.StatusForbidden)
-			return
-		}
+	if _, exists := reservedKeys[bucket]; exists {
+		http.Error(w, fmt.Sprintf("'%s' is a reserved name", bucket), http.StatusForbidden)
+		return
 	}
+
+	key = append([]byte(bucket+"/"), key...)
 
 	err := v.db.Update(func(txn *badger.Txn) error {
 		b, err := ioutil.ReadAll(r.Body)
@@ -235,11 +215,7 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if newKey != "" {
-		location := fmt.Sprintf("/%s", newKey)
-		if v.useBuckets {
-			location = fmt.Sprintf("/%s/%s", bucket, newKey)
-		}
-		w.Header().Set("Location", location)
+		w.Header().Set("Location", fmt.Sprintf("/%s/%s", bucket, newKey))
 	}
 
 	w.WriteHeader(http.StatusCreated)
@@ -251,10 +227,7 @@ func (v *vxdb) delKey(w http.ResponseWriter, r *http.Request) {
 
 	var key []byte
 
-	if v.useBuckets {
-		key = append(key, []byte(bucket+"/")...)
-	}
-
+	key = append(key, []byte(bucket+"/")...)
 	key = append(key, getKeyByte(r)...)
 
 	err := v.db.Update(func(txn *badger.Txn) error {

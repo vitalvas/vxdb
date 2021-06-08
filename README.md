@@ -14,15 +14,6 @@ Perfect for serverless apps, prototyping, metrics, and more.
 
 ### Endpoints
 
-| Path | Method | Description |
-| --- | --- | --- |
-| GET | / | List of keys |
-| POST | / | Create key with unique name (the link will be passed in the http header `location`) |
-| PUT | /`<key name>` | Create or update data in key |
-| DELETE | /`<key name>` | Delete key |
-
-#### When is enabled `DB_USE_BUCKETS`:
-
 Buckets are automatically created when a key is created.
 
 | Path | Method | Description |

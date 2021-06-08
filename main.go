@@ -23,8 +23,7 @@ func main() {
 	}
 
 	vxdb := vxdb{
-		db:         db,
-		useBuckets: getBoolEnv("DB_USE_BUCKETS"),
+		db: db,
 	}
 
 	defer vxdb.db.Close()
@@ -38,23 +37,12 @@ func main() {
 		})
 	})
 
-	if vxdb.useBuckets {
-		router.HandleFunc("/", vxdb.listBuckets).Methods("GET")
-		router.HandleFunc("/{bucket}", vxdb.listKeys).Methods("GET")
-
-		router.HandleFunc("/{bucket}", vxdb.setKey).Methods("POST")
-		router.HandleFunc("/{bucket}/{key}", vxdb.getKey).Methods("GET", "HEAD")
-		router.HandleFunc("/{bucket}/{key}", vxdb.setKey).Methods("PUT")
-		router.HandleFunc("/{bucket}/{key}", vxdb.delKey).Methods("DELETE")
-
-	} else {
-		router.HandleFunc("/", vxdb.listKeys).Methods("GET")
-
-		router.HandleFunc("/", vxdb.setKey).Methods("POST")
-		router.HandleFunc("/{key}", vxdb.getKey).Methods("GET", "HEAD")
-		router.HandleFunc("/{key}", vxdb.setKey).Methods("PUT")
-		router.HandleFunc("/{key}", vxdb.delKey).Methods("DELETE")
-	}
+	router.HandleFunc("/", vxdb.listBuckets).Methods("GET")
+	router.HandleFunc("/{bucket}", vxdb.listKeys).Methods("GET")
+	router.HandleFunc("/{bucket}", vxdb.setKey).Methods("POST")
+	router.HandleFunc("/{bucket}/{key}", vxdb.getKey).Methods("GET", "HEAD")
+	router.HandleFunc("/{bucket}/{key}", vxdb.setKey).Methods("PUT")
+	router.HandleFunc("/{bucket}/{key}", vxdb.delKey).Methods("DELETE")
 
 	srv := http.Server{
 		Addr:    getEnv("HTTP_HOST", "0.0.0.0:8080"),

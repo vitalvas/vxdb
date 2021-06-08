@@ -9,7 +9,6 @@ Perfect for serverless apps, prototyping, metrics, and more.
 ### Env vars
 
 - `DB_PATH` - path to DB files
-- `DB_USE_BUCKETS` - enable support of buckets
 - `HTTP_HOST` - listen http host and port (default: `0.0.0.0:8080`)
 
 ### Endpoints

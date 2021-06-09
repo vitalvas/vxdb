@@ -41,12 +41,15 @@ func main() {
 	router.Use(prometheusMiddleware)
 	router.Handle("/metrics", promhttp.Handler())
 
-	router.HandleFunc("/", vxdb.listBuckets).Methods("GET")
-	router.HandleFunc("/{bucket}", vxdb.listKeys).Methods("GET")
-	router.HandleFunc("/{bucket}", vxdb.setKey).Methods("POST")
-	router.HandleFunc("/{bucket}/{key}", vxdb.getKey).Methods("GET", "HEAD")
-	router.HandleFunc("/{bucket}/{key}", vxdb.setKey).Methods("PUT")
-	router.HandleFunc("/{bucket}/{key}", vxdb.delKey).Methods("DELETE")
+	router.HandleFunc("/api/backup", vxdb.apiBackup).Methods(http.MethodGet)
+	router.HandleFunc("/api/restore", vxdb.apiRestore).Methods(http.MethodPut)
+
+	router.HandleFunc("/", vxdb.listBuckets).Methods(http.MethodGet)
+	router.HandleFunc("/{bucket}", vxdb.listKeys).Methods(http.MethodGet)
+	router.HandleFunc("/{bucket}", vxdb.setKey).Methods(http.MethodPost)
+	router.HandleFunc("/{bucket}/{key}", vxdb.getKey).Methods(http.MethodGet, http.MethodHead)
+	router.HandleFunc("/{bucket}/{key}", vxdb.setKey).Methods(http.MethodPost)
+	router.HandleFunc("/{bucket}/{key}", vxdb.delKey).Methods(http.MethodDelete)
 
 	srv := http.Server{
 		Addr:    getEnv("HTTP_HOST", "0.0.0.0:8080"),

@@ -11,6 +11,7 @@ import (
 
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gorilla/mux"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func main() {
@@ -36,6 +37,9 @@ func main() {
 			next.ServeHTTP(w, r)
 		})
 	})
+
+	router.Use(prometheusMiddleware)
+	router.Handle("/metrics", promhttp.Handler())
 
 	router.HandleFunc("/", vxdb.listBuckets).Methods("GET")
 	router.HandleFunc("/{bucket}", vxdb.listKeys).Methods("GET")

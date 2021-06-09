@@ -48,7 +48,7 @@ func main() {
 	router.HandleFunc("/{bucket}", vxdb.listKeys).Methods(http.MethodGet)
 	router.HandleFunc("/{bucket}", vxdb.setKey).Methods(http.MethodPost)
 	router.HandleFunc("/{bucket}/{key}", vxdb.getKey).Methods(http.MethodGet, http.MethodHead)
-	router.HandleFunc("/{bucket}/{key}", vxdb.setKey).Methods(http.MethodPost)
+	router.HandleFunc("/{bucket}/{key}", vxdb.setKey).Methods(http.MethodPut)
 	router.HandleFunc("/{bucket}/{key}", vxdb.delKey).Methods(http.MethodDelete)
 
 	srv := http.Server{

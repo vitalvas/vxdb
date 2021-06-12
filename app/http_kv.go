@@ -1,10 +1,9 @@
-package main
+package app
 
 import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,27 +12,6 @@ import (
 	"github.com/dgraph-io/badger/v3"
 	"github.com/gorilla/mux"
 )
-
-var reservedKeys = map[string]bool{
-	"metrics": true,
-	"admin":   true,
-	"api":     true,
-}
-
-type vxdb struct {
-	db *badger.DB
-}
-
-func (v *vxdb) runGC() {
-	for {
-		time.Sleep(time.Minute)
-		if err := v.db.RunValueLogGC(0.7); err != nil {
-			if err != badger.ErrNoRewrite {
-				log.Fatal(err)
-			}
-		}
-	}
-}
 
 func (v *vxdb) listBuckets(w http.ResponseWriter, r *http.Request) {
 	keys := make(map[string]bool)
@@ -244,22 +222,5 @@ func (v *vxdb) delKey(w http.ResponseWriter, r *http.Request) {
 		} else {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
-	}
-}
-
-func (v *vxdb) apiBackup(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("content-type", "application/octet-stream")
-	w.Header().Set("content-disposition", "attachment; filename=backup.blob")
-
-	if _, err := v.db.Backup(w, 0); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-}
-
-func (v *vxdb) apiRestore(w http.ResponseWriter, r *http.Request) {
-	if err := v.db.Load(r.Body, 256); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
 	}
 }

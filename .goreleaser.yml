@@ -1,0 +1,25 @@
+builds:
+  - goos:
+      - linux
+    goarch:
+      - amd64
+      - arm
+      - arm64
+
+nfpms:
+  - package_name: vxdb
+    vendor: The VitalVas
+    homepage: https://github.com/vitalvas/vxdb
+    maintainer: The VitalVas <source@vitalvas.com>
+    description: Simple Key-Value NoSQL database with simplest API interface
+    license: MIT
+    formats:
+      - deb
+      - rpm
+    empty_folders:
+      - /var/lib/vxdb
+    contents:
+      - src: scripts/vxdb.service
+        dst: /lib/systemd/system/vxdb.service
+        file_info:
+          mode: 0644

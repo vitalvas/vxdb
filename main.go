@@ -14,9 +14,20 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+var (
+	version = "dev"
+	commit  = "none"
+	date    = "unknown"
+)
+
 func main() {
-	dbOpts := badger.DefaultOptions(getEnv("DB_PATH", "./db"))
-	dbOpts.ValueLogFileSize = 128 << 20
+	defaultDBPath := "/var/lib/vxdb"
+	if version == "dev" {
+		defaultDBPath = "./db"
+	}
+
+	dbOpts := badger.DefaultOptions(getEnv("DB_PATH", defaultDBPath))
+	dbOpts = dbOpts.WithValueLogFileSize(128 << 20) // 128MB
 
 	db, err := badger.Open(dbOpts)
 	if err != nil {

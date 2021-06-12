@@ -1,0 +1,16 @@
+[Unit]
+Description=VxDB
+After=network.target
+StartLimitIntervalSec=0
+
+[Service]
+Type=simple
+LimitNOFILE=1048576
+LimitNPROC=512
+EnvironmentFile=-/etc/default/vxdb
+ExecStart=/usr/local/bin/vxdb
+Restart=on-failure
+RestartSec=10
+
+[Install]
+WantedBy=multi-user.target

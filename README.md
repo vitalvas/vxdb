@@ -33,6 +33,4 @@ services:
     - '8080:8080'
   volumes:
     - <data dir>:/data
-  environment:
-    DB_PATH: '/data'
 ```

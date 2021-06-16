@@ -22,14 +22,25 @@ var vxdbHttpBucketRequests = prometheus.NewCounterVec(
 	},
 	[]string{"bucket", "method"},
 )
+var vxdbHttpRequestsDuration = prometheus.NewHistogramVec(
+	prometheus.HistogramOpts{
+		Name:    "vxdb_http_requests_seconds",
+		Help:    "Latency of requests in second",
+		Buckets: prometheus.DefBuckets,
+	},
+	[]string{"method"},
+)
 
 func init() {
 	prometheus.Register(vxdbHttpRequests)
 	prometheus.Register(vxdbHttpBucketRequests)
+	prometheus.Register(vxdbHttpRequestsDuration)
 }
 
 func prometheusMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		timer := prometheus.NewTimer(vxdbHttpRequestsDuration.WithLabelValues(r.Method))
+
 		next.ServeHTTP(w, r)
 
 		skip := false
@@ -47,5 +58,7 @@ func prometheusMiddleware(next http.Handler) http.Handler {
 				vxdbHttpBucketRequests.WithLabelValues(bucket, r.Method).Inc()
 			}
 		}
+
+		timer.ObserveDuration()
 	})
 }

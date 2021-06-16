@@ -16,4 +16,6 @@ jobs:
           fetch-depth: 1
       
       - name: Build and deploy
-        uses: victoriadrake/jekyll-cd@master
+        uses: helaili/jekyll-action@v2
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}

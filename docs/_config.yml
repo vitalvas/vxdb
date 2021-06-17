@@ -1,4 +1,5 @@
 title: VxDB
 description: Simple schema-less Key-Value NoSQL database with simplest API interface
+baseurl: "/vxdb/"
 
 theme: just-the-docs

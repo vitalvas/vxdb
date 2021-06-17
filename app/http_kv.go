@@ -166,6 +166,8 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 
 	key = append([]byte(bucket+"/"), key...)
 
+	r.Body = http.MaxBytesReader(w, r.Body, v.baseTableSize)
+
 	err := v.db.Update(func(txn *badger.Txn) error {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {

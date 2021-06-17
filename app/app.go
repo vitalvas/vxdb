@@ -16,6 +16,9 @@ import (
 )
 
 func Execute(version, commit, date string) {
+	vxdb := vxdb{
+		baseTableSize: 8 << 20, // 8MB
+	}
 
 	defaultDBPath := "/var/lib/vxdb"
 	if version == "dev" {
@@ -25,7 +28,7 @@ func Execute(version, commit, date string) {
 	dbOpts := badger.DefaultOptions(getEnv("DB_PATH", defaultDBPath))
 	dbOpts = dbOpts.WithValueLogFileSize(128 << 20) // 128MB
 	dbOpts = dbOpts.WithIndexCacheSize(128 << 20)   // 128MB
-	dbOpts = dbOpts.WithBaseTableSize(8 << 20)      // 8MB
+	dbOpts = dbOpts.WithBaseTableSize(vxdb.baseTableSize)
 	dbOpts = dbOpts.WithCompactL0OnClose(true)
 
 	if value, ok := os.LookupEnv("ENCRYPTION_KEY"); ok {
@@ -46,9 +49,7 @@ func Execute(version, commit, date string) {
 		log.Fatal(err)
 	}
 
-	vxdb := vxdb{
-		db: db,
-	}
+	vxdb.db = db
 
 	defer vxdb.db.Close()
 

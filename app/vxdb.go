@@ -14,7 +14,8 @@ var reservedKeys = map[string]bool{
 }
 
 type vxdb struct {
-	db *badger.DB
+	db            *badger.DB
+	baseTableSize int64
 }
 
 func (v *vxdb) runGC() {

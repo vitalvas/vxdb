@@ -2,6 +2,7 @@ package app
 
 import (
 	"context"
+	"encoding/base64"
 	"log"
 	"net/http"
 	"os"
@@ -23,6 +24,22 @@ func Execute(version, commit, date string) {
 
 	dbOpts := badger.DefaultOptions(getEnv("DB_PATH", defaultDBPath))
 	dbOpts = dbOpts.WithValueLogFileSize(128 << 20) // 128MB
+	dbOpts = dbOpts.WithIndexCacheSize(128 << 20)   // 128MB
+	dbOpts = dbOpts.WithBaseTableSize(8 << 20)      // 8MB
+	dbOpts = dbOpts.WithCompactL0OnClose(true)
+
+	if value, ok := os.LookupEnv("ENCRYPTION_KEY"); ok {
+		data, err := base64.StdEncoding.DecodeString(value)
+		if err != nil {
+			log.Fatal(err)
+		}
+
+		if len(data) != 16 && len(data) != 24 && len(data) != 32 {
+			log.Fatal("Encryption key's length should beeither 16, 24, or 32 bytes")
+		}
+		dbOpts = dbOpts.WithEncryptionKey(data)
+		dbOpts = dbOpts.WithEncryptionKeyRotationDuration(7 * 24 * time.Hour) // 7 days
+	}
 
 	db, err := badger.Open(dbOpts)
 	if err != nil {

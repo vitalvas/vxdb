@@ -3,8 +3,12 @@ name: Go
 on:
   push:
     branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
   pull_request:
     branches: [ master ]
+    paths-ignore:
+      - 'docs/**'
 
 jobs:
 
@@ -20,4 +24,3 @@ jobs:
 
     - name: Build
       run: go build -v ./...
-

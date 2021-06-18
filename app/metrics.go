@@ -8,6 +8,13 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
+var vxdbVersion = prometheus.NewGaugeVec(
+	prometheus.GaugeOpts{
+		Name: "vxdb_build_info",
+		Help: "VxDB build info",
+	},
+	[]string{"version", "commit", "date"},
+)
 var vxdbHttpRequests = prometheus.NewCounterVec(
 	prometheus.CounterOpts{
 		Name: "vxdb_http_requests_total",
@@ -32,6 +39,7 @@ var vxdbHttpRequestsDuration = prometheus.NewHistogramVec(
 )
 
 func init() {
+	prometheus.Register(vxdbVersion)
 	prometheus.Register(vxdbHttpRequests)
 	prometheus.Register(vxdbHttpBucketRequests)
 	prometheus.Register(vxdbHttpRequestsDuration)

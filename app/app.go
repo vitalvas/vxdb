@@ -16,6 +16,9 @@ import (
 )
 
 func Execute(version, commit, date string) {
+	log.Printf("Starting VxDBX %s+%s\n", version, commit)
+	vxdbVersion.WithLabelValues(version, commit, date).Set(1)
+
 	vxdb := vxdb{
 		baseTableSize: 8 << 20, // 8MB
 	}

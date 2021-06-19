@@ -10,7 +10,7 @@ nfpms:
     vendor: The VitalVas
     homepage: https://github.com/vitalvas/vxdb
     maintainer: The VitalVas <source@vitalvas.com>
-    description: Simple Key-Value NoSQL database with simplest API interface
+    description: Simple schema-less Key-Value NoSQL database with simplest API interface
     license: MIT
     formats:
       - deb
@@ -22,3 +22,35 @@ nfpms:
         dst: /lib/systemd/system/vxdb.service
         file_info:
           mode: 0644
+
+dockers:
+  - image_templates:
+    - "vitalvas/vxdb:{{ .Tag }}-amd64"
+    use_buildx: true
+    goarch: amd64
+    dockerfile: Dockerfile
+    extra_files:
+      - LICENSE
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/amd64"
+  - image_templates:
+    - "vitalvas/vxdb:{{ .Tag }}-arm64"
+    use_buildx: true
+    goarch: arm64
+    dockerfile: Dockerfile
+    extra_files:
+      - LICENSE
+    build_flag_templates:
+      - "--pull"
+      - "--platform=linux/arm64"
+
+docker_manifests:
+  - name_template: vitalvas/vxdb:{{ .Tag }}
+    image_templates:
+      - vitalvas/vxdb:{{ .Tag }}-amd64
+      - vitalvas/vxdb:{{ .Tag }}-arm64
+  - name_template: vitalvas/vxdb:latest
+    image_templates:
+      - vitalvas/vxdb:{{ .Tag }}-amd64
+      - vitalvas/vxdb:{{ .Tag }}-arm64

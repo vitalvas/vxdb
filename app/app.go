@@ -68,12 +68,22 @@ func Execute(version, commit, date string) {
 	router.HandleFunc("/api/backup", vxdb.apiBackup).Methods(http.MethodGet)
 	router.HandleFunc("/api/restore", vxdb.apiRestore).Methods(http.MethodPut)
 
-	router.HandleFunc("/", vxdb.listBuckets).Methods(http.MethodGet)
-	router.HandleFunc("/{bucket}", vxdb.listKeys).Methods(http.MethodGet)
-	router.HandleFunc("/{bucket}", vxdb.setKey).Methods(http.MethodPost)
-	router.HandleFunc("/{bucket}/{key:.*}", vxdb.getKey).Methods(http.MethodGet, http.MethodHead)
-	router.HandleFunc("/{bucket}/{key:.*}", vxdb.setKey).Methods(http.MethodPut)
-	router.HandleFunc("/{bucket}/{key:.*}", vxdb.delKey).Methods(http.MethodDelete)
+	dataRouter := router.NewRoute().Subrouter()
+
+	if value, ok := os.LookupEnv("AUTH_DATA_JWKS_URL"); ok {
+		auth := AuthJWT{
+			JwksURL: value,
+		}
+
+		dataRouter.Use(auth.Middleware)
+	}
+
+	dataRouter.HandleFunc("/", vxdb.listBuckets).Methods(http.MethodGet)
+	dataRouter.HandleFunc("/{bucket}", vxdb.listKeys).Methods(http.MethodGet)
+	dataRouter.HandleFunc("/{bucket}", vxdb.setKey).Methods(http.MethodPost)
+	dataRouter.HandleFunc("/{bucket}/{key:.*}", vxdb.getKey).Methods(http.MethodGet, http.MethodHead)
+	dataRouter.HandleFunc("/{bucket}/{key:.*}", vxdb.setKey).Methods(http.MethodPut)
+	dataRouter.HandleFunc("/{bucket}/{key:.*}", vxdb.delKey).Methods(http.MethodDelete)
 
 	srv := http.Server{
 		Addr:    getEnv("HTTP_HOST", "0.0.0.0:8080"),

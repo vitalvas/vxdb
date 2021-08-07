@@ -11,8 +11,6 @@ import (
 	"time"
 
 	"github.com/dgraph-io/badger/v3"
-	"github.com/gorilla/mux"
-	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 func Execute(version, commit, date string) {
@@ -58,64 +56,9 @@ func Execute(version, commit, date string) {
 
 	go vxdb.runGC()
 
-	router := mux.NewRouter()
-
-	router.Use(servedMiddleware)
-	router.Use(prometheusMiddleware)
-
-	router.Handle("/metrics", promhttp.Handler())
-
-	apiRouter := router.PathPrefix("/api").Subrouter()
-	apiAuthEnabled := false
-
-	if value, ok := os.LookupEnv("AUTH_API_BASIC_USERPASS"); ok && !apiAuthEnabled {
-		apiAuthEnabled = true
-
-		auth := NewAuthBasic(value)
-		apiRouter.Use(auth.Middleware)
-	}
-
-	if value, ok := os.LookupEnv("AUTH_API_JWKS_URL"); ok && !apiAuthEnabled {
-		apiAuthEnabled = true
-		auth := AuthJWT{
-			JwksURL: value,
-		}
-
-		apiRouter.Use(auth.Middleware)
-	}
-
-	apiRouter.HandleFunc("/backup", vxdb.apiBackup).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/restore", vxdb.apiRestore).Methods(http.MethodPut)
-
-	dataRouter := router.NewRoute().Subrouter()
-	dataAuthEnabled := false
-
-	if value, ok := os.LookupEnv("AUTH_DATA_BASIC_USERPASS"); ok && !dataAuthEnabled {
-		dataAuthEnabled = true
-
-		auth := NewAuthBasic(value)
-		dataRouter.Use(auth.Middleware)
-	}
-
-	if value, ok := os.LookupEnv("AUTH_DATA_JWKS_URL"); ok && !dataAuthEnabled {
-		dataAuthEnabled = true
-		auth := AuthJWT{
-			JwksURL: value,
-		}
-
-		dataRouter.Use(auth.Middleware)
-	}
-
-	dataRouter.HandleFunc("/", vxdb.listBuckets).Methods(http.MethodGet)
-	dataRouter.HandleFunc("/{bucket}", vxdb.listKeys).Methods(http.MethodGet)
-	dataRouter.HandleFunc("/{bucket}", vxdb.setKey).Methods(http.MethodPost)
-	dataRouter.HandleFunc("/{bucket}/{key:.*}", vxdb.getKey).Methods(http.MethodGet, http.MethodHead)
-	dataRouter.HandleFunc("/{bucket}/{key:.*}", vxdb.setKey).Methods(http.MethodPut)
-	dataRouter.HandleFunc("/{bucket}/{key:.*}", vxdb.delKey).Methods(http.MethodDelete)
-
 	srv := http.Server{
 		Addr:    getEnv("HTTP_HOST", "0.0.0.0:8080"),
-		Handler: router,
+		Handler: vxdb.newHttpRouter(),
 	}
 
 	go func() {

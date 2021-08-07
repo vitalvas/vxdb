@@ -65,8 +65,18 @@ func Execute(version, commit, date string) {
 
 	router.Handle("/metrics", promhttp.Handler())
 
-	router.HandleFunc("/api/backup", vxdb.apiBackup).Methods(http.MethodGet)
-	router.HandleFunc("/api/restore", vxdb.apiRestore).Methods(http.MethodPut)
+	apiRouter := router.PathPrefix("/api").Subrouter()
+
+	apiRouter.HandleFunc("/backup", vxdb.apiBackup).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/restore", vxdb.apiRestore).Methods(http.MethodPut)
+
+	if value, ok := os.LookupEnv("AUTH_API_JWKS_URL"); ok {
+		auth := AuthJWT{
+			JwksURL: value,
+		}
+
+		apiRouter.Use(auth.Middleware)
+	}
 
 	dataRouter := router.NewRoute().Subrouter()
 

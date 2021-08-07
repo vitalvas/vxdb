@@ -12,6 +12,8 @@ Configuration parameters:
 | DB_PATH | Path to database files | `/data` (for docker)<br>`/var/lib/vxdb` (for packages) |
 | HTTP_HOST | Bind address of REST interface | `0.0.0.0:8080` |
 | ENCRYPTION_KEY | Data encryption key | |
+| AUTH_API_BASIC_USERPASS | | |
+| AUTH_DATA_BASIC_USERPASS | | |
 | AUTH_API_JWKS_URL | Jwks url for auth in API with using JWT keys | |
 | AUTH_DATA_JWKS_URL | Jwks url for auth using JWT keys | |
 

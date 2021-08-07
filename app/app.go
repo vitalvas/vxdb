@@ -66,11 +66,17 @@ func Execute(version, commit, date string) {
 	router.Handle("/metrics", promhttp.Handler())
 
 	apiRouter := router.PathPrefix("/api").Subrouter()
+	apiAuthEnabled := false
 
-	apiRouter.HandleFunc("/backup", vxdb.apiBackup).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/restore", vxdb.apiRestore).Methods(http.MethodPut)
+	if value, ok := os.LookupEnv("AUTH_API_BASIC_USERPASS"); ok && !apiAuthEnabled {
+		apiAuthEnabled = true
 
-	if value, ok := os.LookupEnv("AUTH_API_JWKS_URL"); ok {
+		auth := NewAuthBasic(value)
+		apiRouter.Use(auth.Middleware)
+	}
+
+	if value, ok := os.LookupEnv("AUTH_API_JWKS_URL"); ok && !apiAuthEnabled {
+		apiAuthEnabled = true
 		auth := AuthJWT{
 			JwksURL: value,
 		}
@@ -78,9 +84,21 @@ func Execute(version, commit, date string) {
 		apiRouter.Use(auth.Middleware)
 	}
 
-	dataRouter := router.NewRoute().Subrouter()
+	apiRouter.HandleFunc("/backup", vxdb.apiBackup).Methods(http.MethodGet)
+	apiRouter.HandleFunc("/restore", vxdb.apiRestore).Methods(http.MethodPut)
 
-	if value, ok := os.LookupEnv("AUTH_DATA_JWKS_URL"); ok {
+	dataRouter := router.NewRoute().Subrouter()
+	dataAuthEnabled := false
+
+	if value, ok := os.LookupEnv("AUTH_DATA_BASIC_USERPASS"); ok && !dataAuthEnabled {
+		dataAuthEnabled = true
+
+		auth := NewAuthBasic(value)
+		dataRouter.Use(auth.Middleware)
+	}
+
+	if value, ok := os.LookupEnv("AUTH_DATA_JWKS_URL"); ok && !dataAuthEnabled {
+		dataAuthEnabled = true
 		auth := AuthJWT{
 			JwksURL: value,
 		}

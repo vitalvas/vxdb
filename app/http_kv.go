@@ -296,6 +296,11 @@ func (v *vxdb) createBucket(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if _, exists := reservedKeys[bucket]; exists {
+		http.Error(w, fmt.Sprintf("'%s' is a reserved name", bucket), http.StatusForbidden)
+		return
+	}
+
 	if err := v.Open(bucket); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 	}

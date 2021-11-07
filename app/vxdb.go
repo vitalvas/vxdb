@@ -75,6 +75,10 @@ func (v *vxdb) openDBBuckets() error {
 			return nil
 		}
 
+		if _, exists := reservedKeys[info.Name()]; exists {
+			return nil
+		}
+
 		return v.Open(info.Name())
 	})
 }

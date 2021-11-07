@@ -14,38 +14,45 @@ import (
 )
 
 func (v *vxdb) listBuckets(w http.ResponseWriter, r *http.Request) {
-	keys := make(map[string]bool)
-
-	err := v.db.View(func(txn *badger.Txn) error {
-		opts := badger.DefaultIteratorOptions
-		opts.PrefetchValues = false
-
-		it := txn.NewIterator(opts)
-		defer it.Close()
-
-		prefix := []byte(getHeaderKey("prefix", r))
-
-		for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
-			item := it.Item()
-			key := item.Key()
-			multiKeys := strings.SplitN(string(key), "/", 2)
-			if len(multiKeys) == 2 {
-				keys[multiKeys[0]] = true
-			}
-		}
-
-		return nil
-	})
-
-	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-		return
-	}
-
 	var listOfKeys []string
 
-	for k := range keys {
-		listOfKeys = append(listOfKeys, k)
+	if !v.dbPerBucket {
+		keys := make(map[string]bool)
+
+		err := v.db.View(func(txn *badger.Txn) error {
+			opts := badger.DefaultIteratorOptions
+			opts.PrefetchValues = false
+
+			it := txn.NewIterator(opts)
+			defer it.Close()
+
+			prefix := []byte(getHeaderKey("prefix", r))
+
+			for it.Seek(prefix); it.ValidForPrefix(prefix); it.Next() {
+				item := it.Item()
+				key := item.Key()
+				multiKeys := strings.SplitN(string(key), "/", 2)
+				if len(multiKeys) == 2 {
+					keys[multiKeys[0]] = true
+				}
+			}
+
+			return nil
+		})
+
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusInternalServerError)
+			return
+		}
+
+		for k := range keys {
+			listOfKeys = append(listOfKeys, k)
+		}
+
+	} else {
+		for name, _ := range v.dbBucket {
+			listOfKeys = append(listOfKeys, name)
+		}
 	}
 
 	data, err := json.Marshal(listOfKeys)
@@ -66,10 +73,23 @@ func (v *vxdb) listBuckets(w http.ResponseWriter, r *http.Request) {
 
 func (v *vxdb) listKeys(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
+	bucket := vars["bucket"]
 
+	var db *badger.DB
 	var listOfKeys []string
 
-	err := v.db.View(func(txn *badger.Txn) error {
+	if v.dbPerBucket {
+		bdb, err := v.getDB(bucket)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		db = bdb
+	} else {
+		db = v.db
+	}
+
+	err := db.View(func(txn *badger.Txn) error {
 		opts := badger.DefaultIteratorOptions
 		opts.PrefetchValues = false
 
@@ -78,7 +98,9 @@ func (v *vxdb) listKeys(w http.ResponseWriter, r *http.Request) {
 
 		var prefix []byte
 
-		prefix = append(prefix, []byte(vars["bucket"]+"/")...)
+		if !v.dbPerBucket {
+			prefix = append(prefix, []byte(bucket+"/")...)
+		}
 
 		userPrefix := getHeaderKey("prefix", r)
 		if userPrefix != "" {
@@ -121,12 +143,25 @@ func (v *vxdb) getKey(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	bucket := vars["bucket"]
 
+	var db *badger.DB
+
 	var key []byte
 
-	key = append(key, []byte(bucket+"/")...)
+	if v.dbPerBucket {
+		bdb, err := v.getDB(bucket)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		db = bdb
+	} else {
+		key = append(key, []byte(bucket+"/")...)
+		db = v.db
+	}
+
 	key = append(key, getKeyByte(r)...)
 
-	err := v.db.View(func(txn *badger.Txn) error {
+	err := db.View(func(txn *badger.Txn) error {
 		item, err := txn.Get(key)
 		if err != nil {
 			return err
@@ -150,6 +185,8 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 	vars := mux.Vars(r)
 	bucket := vars["bucket"]
 
+	var db *badger.DB
+
 	key := getKeyByte(r)
 
 	newKey := ""
@@ -159,16 +196,26 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 		key = []byte(newKey)
 	}
 
-	if _, exists := reservedKeys[bucket]; exists {
-		http.Error(w, fmt.Sprintf("'%s' is a reserved name", bucket), http.StatusForbidden)
-		return
-	}
+	if v.dbPerBucket {
+		bdb, err := v.getDB(bucket)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		db = bdb
+	} else {
+		if _, exists := reservedKeys[bucket]; exists {
+			http.Error(w, fmt.Sprintf("'%s' is a reserved name", bucket), http.StatusForbidden)
+			return
+		}
 
-	key = append([]byte(bucket+"/"), key...)
+		key = append([]byte(bucket+"/"), key...)
+		db = v.db
+	}
 
 	r.Body = http.MaxBytesReader(w, r.Body, v.baseTableSize)
 
-	err := v.db.Update(func(txn *badger.Txn) error {
+	err := db.Update(func(txn *badger.Txn) error {
 		b, err := ioutil.ReadAll(r.Body)
 		if err != nil {
 			return err
@@ -207,10 +254,23 @@ func (v *vxdb) delKey(w http.ResponseWriter, r *http.Request) {
 
 	var key []byte
 
-	key = append(key, []byte(bucket+"/")...)
+	var db *badger.DB
+
+	if v.dbPerBucket {
+		bdb, err := v.getDB(bucket)
+		if err != nil {
+			http.Error(w, err.Error(), http.StatusNotFound)
+			return
+		}
+		db = bdb
+	} else {
+		key = append(key, []byte(bucket+"/")...)
+		db = v.db
+	}
+
 	key = append(key, getKeyByte(r)...)
 
-	err := v.db.Update(func(txn *badger.Txn) error {
+	err := db.Update(func(txn *badger.Txn) error {
 		_, err := txn.Get(key)
 		if err != nil {
 			return err
@@ -225,4 +285,20 @@ func (v *vxdb) delKey(w http.ResponseWriter, r *http.Request) {
 			http.Error(w, err.Error(), http.StatusInternalServerError)
 		}
 	}
+}
+
+func (v *vxdb) createBucket(w http.ResponseWriter, r *http.Request) {
+	vars := mux.Vars(r)
+	bucket := vars["bucket"]
+
+	if _, exists := v.dbBucket[bucket]; exists {
+		http.Error(w, "bucket alredy exists", http.StatusCreated)
+		return
+	}
+
+	if err := v.Open(bucket); err != nil {
+		http.Error(w, err.Error(), http.StatusInternalServerError)
+	}
+
+	w.WriteHeader(http.StatusCreated)
 }

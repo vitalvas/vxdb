@@ -35,8 +35,13 @@ func (v *vxdb) newHttpRouter() *mux.Router {
 		apiRouter.Use(auth.Middleware)
 	}
 
-	apiRouter.HandleFunc("/backup", v.apiBackup).Methods(http.MethodGet)
-	apiRouter.HandleFunc("/restore", v.apiRestore).Methods(http.MethodPut)
+	if v.dbPerBucket {
+		apiRouter.HandleFunc("/backup/{bucket}", v.apiBackup).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/restore/{bucket}", v.apiRestore).Methods(http.MethodPut)
+	} else {
+		apiRouter.HandleFunc("/backup", v.apiBackup).Methods(http.MethodGet)
+		apiRouter.HandleFunc("/restore", v.apiRestore).Methods(http.MethodPut)
+	}
 
 	dataRouter := router.NewRoute().Subrouter()
 	dataAuthEnabled := false
@@ -55,6 +60,10 @@ func (v *vxdb) newHttpRouter() *mux.Router {
 		}
 
 		dataRouter.Use(auth.Middleware)
+	}
+
+	if v.dbPerBucket {
+		dataRouter.HandleFunc("/{bucket}", v.createBucket).Methods(http.MethodPut)
 	}
 
 	dataRouter.HandleFunc("/", v.listBuckets).Methods(http.MethodGet)

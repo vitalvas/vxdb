@@ -2,7 +2,6 @@ package app
 
 import (
 	"context"
-	"encoding/base64"
 	"log"
 	"net/http"
 	"os"
@@ -19,40 +18,21 @@ func Execute(version, commit, date string) {
 
 	vxdb := vxdb{
 		baseTableSize: 8 << 20, // 8MB
+		dbPerBucket:   getBoolEnv("DB_PER_BUCKET"),
+		dbPath:        getEnv("DB_PATH", "/var/lib/vxdb"),
 	}
 
-	defaultDBPath := "/var/lib/vxdb"
-	if version == "dev" {
-		defaultDBPath = "./db"
-	}
+	defer vxdb.Close()
 
-	dbOpts := badger.DefaultOptions(getEnv("DB_PATH", defaultDBPath))
-	dbOpts = dbOpts.WithValueLogFileSize(128 << 20) // 128MB
-	dbOpts = dbOpts.WithIndexCacheSize(128 << 20)   // 128MB
-	dbOpts = dbOpts.WithBaseTableSize(vxdb.baseTableSize)
-	dbOpts = dbOpts.WithCompactL0OnClose(true)
+	if vxdb.dbPerBucket {
+		vxdb.dbBucket = make(map[string]*badger.DB)
+		vxdb.openDBBuckets()
 
-	if value, ok := os.LookupEnv("ENCRYPTION_KEY"); ok {
-		data, err := base64.StdEncoding.DecodeString(value)
-		if err != nil {
+	} else {
+		if err := vxdb.Open("none"); err != nil {
 			log.Fatal(err)
 		}
-
-		if len(data) != 16 && len(data) != 24 && len(data) != 32 {
-			log.Fatal("Encryption key's length should beeither 16, 24, or 32 bytes")
-		}
-		dbOpts = dbOpts.WithEncryptionKey(data)
-		dbOpts = dbOpts.WithEncryptionKeyRotationDuration(7 * 24 * time.Hour) // 7 days
 	}
-
-	db, err := badger.Open(dbOpts)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	vxdb.db = db
-
-	defer vxdb.db.Close()
 
 	go vxdb.runGC()
 
@@ -79,5 +59,4 @@ func Execute(version, commit, date string) {
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 		log.Fatalln(err)
 	}
-
 }

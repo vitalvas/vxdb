@@ -15,9 +15,9 @@ nfpms:
     formats:
       - deb
       - rpm
-    empty_folders:
-      - /var/lib/vxdb
     contents:
+      - dst: /var/lib/vxdb
+        type: dir
       - src: scripts/vxdb.service
         dst: /lib/systemd/system/vxdb.service
         file_info:
@@ -26,7 +26,7 @@ nfpms:
 dockers:
   - image_templates:
     - "vitalvas/vxdb:{{ .Tag }}-amd64"
-    use_buildx: true
+    use: buildx
     goarch: amd64
     dockerfile: Dockerfile
     extra_files:
@@ -36,7 +36,7 @@ dockers:
       - "--platform=linux/amd64"
   - image_templates:
     - "vitalvas/vxdb:{{ .Tag }}-arm64"
-    use_buildx: true
+    use: buildx
     goarch: arm64
     dockerfile: Dockerfile
     extra_files:

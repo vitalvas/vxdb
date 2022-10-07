@@ -3,7 +3,7 @@ package app
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -50,7 +50,7 @@ func (v *vxdb) listBuckets(w http.ResponseWriter, r *http.Request) {
 		}
 
 	} else {
-		for name, _ := range v.dbBucket {
+		for name := range v.dbBucket {
 			listOfKeys = append(listOfKeys, name)
 		}
 	}
@@ -216,7 +216,7 @@ func (v *vxdb) setKey(w http.ResponseWriter, r *http.Request) {
 	r.Body = http.MaxBytesReader(w, r.Body, v.baseTableSize)
 
 	err := db.Update(func(txn *badger.Txn) error {
-		b, err := ioutil.ReadAll(r.Body)
+		b, err := io.ReadAll(r.Body)
 		if err != nil {
 			return err
 		}

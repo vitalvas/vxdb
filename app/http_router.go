@@ -8,7 +8,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
-func (v *vxdb) newHttpRouter() *mux.Router {
+func (v *vxdb) newHTTPRouter() *mux.Router {
 	router := mux.NewRouter()
 
 	router.Use(servedMiddleware)
@@ -17,17 +17,11 @@ func (v *vxdb) newHttpRouter() *mux.Router {
 	router.Handle("/metrics", promhttp.Handler())
 
 	apiRouter := router.PathPrefix("/api").Subrouter()
-	apiAuthEnabled := false
 
-	if value, ok := os.LookupEnv("AUTH_API_BASIC_USERPASS"); ok && !apiAuthEnabled {
-		apiAuthEnabled = true
-
+	if value, ok := os.LookupEnv("AUTH_API_BASIC_USERPASS"); ok && len(value) > 5 {
 		auth := NewAuthBasic(value)
 		apiRouter.Use(auth.Middleware)
-	}
-
-	if value, ok := os.LookupEnv("AUTH_API_JWKS_URL"); ok && !apiAuthEnabled {
-		apiAuthEnabled = true
+	} else if value, ok := os.LookupEnv("AUTH_API_JWKS_URL"); ok && len(value) > 5 {
 		auth := AuthJWT{
 			JwksURL: value,
 		}
@@ -44,17 +38,11 @@ func (v *vxdb) newHttpRouter() *mux.Router {
 	}
 
 	dataRouter := router.NewRoute().Subrouter()
-	dataAuthEnabled := false
 
-	if value, ok := os.LookupEnv("AUTH_DATA_BASIC_USERPASS"); ok && !dataAuthEnabled {
-		dataAuthEnabled = true
-
+	if value, ok := os.LookupEnv("AUTH_DATA_BASIC_USERPASS"); ok && len(value) > 5 {
 		auth := NewAuthBasic(value)
 		dataRouter.Use(auth.Middleware)
-	}
-
-	if value, ok := os.LookupEnv("AUTH_DATA_JWKS_URL"); ok && !dataAuthEnabled {
-		dataAuthEnabled = true
+	} else if value, ok := os.LookupEnv("AUTH_DATA_JWKS_URL"); ok && len(value) > 5 {
 		auth := AuthJWT{
 			JwksURL: value,
 		}

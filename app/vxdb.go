@@ -66,6 +66,10 @@ func (v *vxdb) Open(name string) error {
 }
 
 func (v *vxdb) openDBBuckets() error {
+	if v.dbBucket == nil {
+		v.dbBucket = make(map[string]*badger.DB)
+	}
+
 	return filepath.Walk(v.dbPath, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -87,9 +91,9 @@ func (v *vxdb) getDB(bucket string) (*badger.DB, error) {
 	if v.dbPerBucket {
 		if db, ok := v.dbBucket[bucket]; ok {
 			return db, nil
-		} else {
-			return nil, errors.New("bucket not found")
 		}
+
+		return nil, errors.New("bucket not found")
 	}
 
 	return v.db, nil

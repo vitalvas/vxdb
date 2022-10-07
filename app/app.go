@@ -8,8 +8,6 @@ import (
 	"os/signal"
 	"syscall"
 	"time"
-
-	"github.com/dgraph-io/badger/v3"
 )
 
 func Execute(version, commit, date string) {
@@ -22,10 +20,7 @@ func Execute(version, commit, date string) {
 		dbPath:        getEnv("DB_PATH", "/var/lib/vxdb"),
 	}
 
-	defer vxdb.Close()
-
 	if vxdb.dbPerBucket {
-		vxdb.dbBucket = make(map[string]*badger.DB)
 		vxdb.openDBBuckets()
 
 	} else {
@@ -34,11 +29,14 @@ func Execute(version, commit, date string) {
 		}
 	}
 
+	defer vxdb.Close()
+
 	go vxdb.runGC()
 
 	srv := http.Server{
-		Addr:    getEnv("HTTP_HOST", "0.0.0.0:8080"),
-		Handler: vxdb.newHttpRouter(),
+		Addr:              getEnv("HTTP_HOST", "0.0.0.0:8080"),
+		Handler:           vxdb.newHTTPRouter(),
+		ReadHeaderTimeout: 10 * time.Second,
 	}
 
 	go func() {
@@ -57,6 +55,6 @@ func Execute(version, commit, date string) {
 	}()
 
 	if err := srv.ListenAndServe(); err != nil && err != http.ErrServerClosed {
-		log.Fatalln(err)
+		log.Println(err)
 	}
 }

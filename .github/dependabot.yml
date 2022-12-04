@@ -7,3 +7,7 @@ updates:
     schedule:
       interval: weekly
       day: sunday
+    reviewers:
+      - "vitalvas"
+    assignees:
+      - "vitalvas"

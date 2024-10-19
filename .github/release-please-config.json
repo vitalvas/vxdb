@@ -1,0 +1,7 @@
+{
+    "release-type": "simple",
+    "prerelease": false,
+    "packages": {
+        ".": {}
+    }
+}

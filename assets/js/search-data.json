@@ -1,0 +1,50 @@
+{"0": {
+    "doc": "API",
+    "title": "Endpoints",
+    "content": "Buckets are automatically created when a key is created. | Path | Method | Description | . | / | GET | List of buckets | . | /&lt;bucket&gt; | GET | List of keys | . | /&lt;bucket&gt; | POST | Create key with unique name (the link will be passed in the http header location) | . | /&lt;bucket&gt;/&lt;key name&gt; | PUT | Create or update data in key | . | /&lt;bucket&gt;/&lt;key name&gt; | DELETE | Delete key | . Add-ons . There are some additions to the methods as well. When viewing a list of buckets or keys, you can filter by prefix using x-key-prefix in the request header or prefix in the request argument. When recording, you can specify the TTL for recording. To do this, you need to pass x-key-ttl in the header or ttl in the request argument. The time is taken as a value, reflected in seconds and in the format of an integer-positive number. ",
+    "url": "/vxdb/api.html#endpoints",
+    "relUrl": "/api.html#endpoints"
+  },"1": {
+    "doc": "API",
+    "title": "Management",
+    "content": "| Path | Method | Description | . | /metrics | GET | Prometheus metrics | . | /api/backup | GET | Export KV via protobuf file | . | /api/restore | PUT | Import KV from protobuf file | . ",
+    "url": "/vxdb/api.html#management",
+    "relUrl": "/api.html#management"
+  },"2": {
+    "doc": "API",
+    "title": "API",
+    "content": " ",
+    "url": "/vxdb/api.html",
+    "relUrl": "/api.html"
+  },"3": {
+    "doc": "Configuration",
+    "title": "Configuration",
+    "content": "Applications are configured through environment variables. Configuration parameters: . | Key | Description | Default value | . | DB_PATH | Path to database files | /data (for docker)/var/lib/vxdb (for packages) | . | HTTP_HOST | Bind address of REST interface | 0.0.0.0:8080 | . | ENCRYPTION_KEY | Data encryption key |   | . | AUTH_API_BASIC_USERPASS |   |   | . | AUTH_DATA_BASIC_USERPASS |   |   | . | AUTH_API_JWKS_URL | Jwks url for auth in API with using JWT keys |   | . | AUTH_DATA_JWKS_URL | Jwks url for auth using JWT keys |   | . Encryption . The encryption is based on AES. The key must be 16, 24 or 32 bytes and packed in base64. Type of AES is used based on the key size. For example 16 bytes will use AES-128. 24 bytes will use AES-192. 32 bytes will use AES-256. You can use openssl to generate the key: . | openssl rand -base64 16 | openssl rand -base64 24 | openssl rand -base64 32 | . ",
+    "url": "/vxdb/configuration.html",
+    "relUrl": "/configuration.html"
+  },"4": {
+    "doc": "Example",
+    "title": "Docker",
+    "content": "version: '3' services: vxdb: image: vitalvas/vxdb:latest ports: - '8080:8080' volumes: - &lt;data dir&gt;:/data . Gitlab data auth . Compose . version: '3' services: vxdb: image: vitalvas/vxdb:latest ports: - '8080:8080' volumes: - &lt;data dir&gt;:/data environment: AUTH_DATA_JWKS_URL: 'https://gitlab.com/-/jwks' . CI Job . curl -H \"Authorization: Bearer ${CI_JOB_JWT}\" http://vxdb.service.local:8080/test_bucket/test_key . ",
+    "url": "/vxdb/example.html#docker",
+    "relUrl": "/example.html#docker"
+  },"5": {
+    "doc": "Example",
+    "title": "Example",
+    "content": " ",
+    "url": "/vxdb/example.html",
+    "relUrl": "/example.html"
+  },"6": {
+    "doc": "About",
+    "title": "Real usage",
+    "content": "It is used both in personal projects and various corporate products. The largest installation (mid-June 2021) - storage of 400 million objects in 300 buckets. ",
+    "url": "/vxdb/#real-usage",
+    "relUrl": "/#real-usage"
+  },"7": {
+    "doc": "About",
+    "title": "About",
+    "content": "Simple schema-less Key-Value NoSQL database with simplest API interface. Perfect for serverless apps, prototyping, metrics, and more. This database basically uses LSM storage, which is optimized for writing. ",
+    "url": "/vxdb/",
+    "relUrl": "/"
+  }
+}
